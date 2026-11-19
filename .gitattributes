@@ -1,0 +1,13 @@
+# 统一使用 LF：Windows 上编辑过的 shell 脚本在 macOS 会因 CRLF 报 bad interpreter
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.swift text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.pbxproj text eol=lf
+*.xcscheme text eol=lf
+*.plist text eol=lf
+
+*.ipa binary
+*.png binary
