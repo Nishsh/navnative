@@ -1,13 +1,13 @@
 name: build-native-ipa
 
+# 只用手动触发：tools/push_via_api.py 是逐文件提交的，
+# 若开放 push 触发，一次上传会排出几十个构建互相堵死队列。
 on:
   workflow_dispatch:
-  push:
-    branches: [ main, master ]
-    paths:
-      - 'NavNative/**'
-      - '.github/workflows/build-ipa.yml'
-      - 'build_ipa.sh'
+
+concurrency:
+  group: native-ipa-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
