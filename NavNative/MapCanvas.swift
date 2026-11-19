@@ -278,7 +278,9 @@ struct MapCanvas: UIViewRepresentable {
                 pitch: model.pitch,
                 heading: model.cameraHeading
             )
-            mapView.setCamera(camera, animated: true)
+            // 第一次定位直接切过去，别从全国视野慢慢飞
+            let animated = lastCenter != nil
+            mapView.setCamera(camera, animated: animated)
 
             forceCameraUpdate = false
             lastCameraAt = Date()
