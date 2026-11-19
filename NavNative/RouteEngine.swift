@@ -104,10 +104,14 @@ struct RouteOption: Identifiable {
     /// 当前位置对应的 step 序号（只在 [current, current+2] 内前进，避免折返跳步）
     func advancedStepIndex(from current: Int, coordinate: CLLocationCoordinate2D) -> Int {
         guard !steps.isEmpty else { return 0 }
-        let upper = min(steps.count - 1, current + 2)
-        var best = current
+
+        // 防御：current 可能来自旧路线，先夹到合法区间，避免构造非法 Range 崩溃
+        let safeCurrent = min(max(current, 0), steps.count - 1)
+        let upper = min(steps.count - 1, safeCurrent + 2)
+
+        var best = safeCurrent
         var bestDistance = Double.greatestFiniteMagnitude
-        for i in current...upper {
+        for i in safeCurrent...upper {
             let pts = steps[i].polyline.allCoordinates
             for p in pts {
                 let d = Geo.distance(p, coordinate)
@@ -117,7 +121,6 @@ struct RouteOption: Identifiable {
                 }
             }
         }
-        // 距当前 step 折线超过 80m 且下一 step 更近，才允许前进
         return best
     }
 
