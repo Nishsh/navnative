@@ -17,6 +17,12 @@
 		AABBCCDD0000000000000018 /* NavHUDView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCCDD0000000000000008 /* NavHUDView.swift */; };
 		AABBCCDD0000000000000019 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCCDD0000000000000009 /* Theme.swift */; };
 		AABBCCDD000000000000001A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AABBCCDD000000000000000B /* Assets.xcassets */; };
+		AABBCCDD0000000000000024 /* LocationFuser.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCCDD000000000000002A /* LocationFuser.swift */; };
+		AABBCCDD0000000000000025 /* Settings.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCCDD000000000000002B /* Settings.swift */; };
+		AABBCCDD0000000000000026 /* Guidance.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCCDD000000000000002C /* Guidance.swift */; };
+		AABBCCDD0000000000000027 /* TripStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCCDD000000000000002D /* TripStore.swift */; };
+		AABBCCDD0000000000000028 /* POISearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCCDD000000000000002E /* POISearch.swift */; };
+		AABBCCDD0000000000000029 /* Panels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABBCCDD000000000000002F /* Panels.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +38,12 @@
 		AABBCCDD000000000000000A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		AABBCCDD000000000000000B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AABBCCDD000000000000000C /* NavNative.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NavNative.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AABBCCDD000000000000002A /* LocationFuser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationFuser.swift; sourceTree = "<group>"; };
+		AABBCCDD000000000000002B /* Settings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Settings.swift; sourceTree = "<group>"; };
+		AABBCCDD000000000000002C /* Guidance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Guidance.swift; sourceTree = "<group>"; };
+		AABBCCDD000000000000002D /* TripStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripStore.swift; sourceTree = "<group>"; };
+		AABBCCDD000000000000002E /* POISearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = POISearch.swift; sourceTree = "<group>"; };
+		AABBCCDD000000000000002F /* Panels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -62,9 +74,15 @@
 				AABBCCDD0000000000000004 /* NavModel.swift */,
 				AABBCCDD0000000000000005 /* RouteEngine.swift */,
 				AABBCCDD0000000000000006 /* LocationEngine.swift */,
+				AABBCCDD000000000000002A /* LocationFuser.swift */,
 				AABBCCDD0000000000000007 /* SearchPanel.swift */,
 				AABBCCDD0000000000000008 /* NavHUDView.swift */,
 				AABBCCDD0000000000000009 /* Theme.swift */,
+				AABBCCDD000000000000002B /* Settings.swift */,
+				AABBCCDD000000000000002C /* Guidance.swift */,
+				AABBCCDD000000000000002D /* TripStore.swift */,
+				AABBCCDD000000000000002E /* POISearch.swift */,
+				AABBCCDD000000000000002F /* Panels.swift */,
 				AABBCCDD000000000000000B /* Assets.xcassets */,
 				AABBCCDD000000000000000A /* Info.plist */,
 			);
@@ -158,6 +176,12 @@
 				AABBCCDD0000000000000017 /* SearchPanel.swift in Sources */,
 				AABBCCDD0000000000000018 /* NavHUDView.swift in Sources */,
 				AABBCCDD0000000000000019 /* Theme.swift in Sources */,
+				AABBCCDD0000000000000024 /* LocationFuser.swift in Sources */,
+				AABBCCDD0000000000000025 /* Settings.swift in Sources */,
+				AABBCCDD0000000000000026 /* Guidance.swift in Sources */,
+				AABBCCDD0000000000000027 /* TripStore.swift in Sources */,
+				AABBCCDD0000000000000028 /* POISearch.swift in Sources */,
+				AABBCCDD0000000000000029 /* Panels.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -222,7 +246,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 100;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = NavNative/Info.plist;
@@ -230,7 +254,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 10.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.privatenavnative;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -245,7 +269,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 100;
 				DEVELOPMENT_TEAM = "";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = NavNative/Info.plist;
@@ -253,7 +277,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 10.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.example.privatenavnative;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
