@@ -129,8 +129,9 @@ struct StatusCard: View {
 
 struct NavTopBar: View {
     @EnvironmentObject private var model: NavModel
+    @ObservedObject private var settings = SettingsStore.shared
 
-    private var large: Bool { SettingsStore.shared.largeHUD }
+    private var large: Bool { settings.largeHUD }
 
     private var instruction: String {
         guard let step = model.currentStep else { return "沿路线前行" }
