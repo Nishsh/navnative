@@ -40,6 +40,10 @@ struct SearchPanel: View {
     @State private var busy = false
     @FocusState private var focused: Bool
 
+    init(initialTarget: SearchTarget = .destination) {
+        self.initialTarget = initialTarget
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
