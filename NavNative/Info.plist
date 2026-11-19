@@ -27,12 +27,17 @@
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 	</dict>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>audio</string>
+	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>用于在地图上显示你的实时位置、车头朝向，并规划与跟随路线。位置数据只在本机使用，不会上传。</string>
+	<string>用于在地图上显示你的实时位置、车头朝向，并规划与跟随路线。位置数据只在本机使用，不上传。</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>用于导航过程中持续更新位置与航向，保证转向提示准确。位置数据只在本机使用，不会上传。</string>
+	<string>导航过程中即使切到后台也会持续更新位置与航向，保证转向提示准确。位置数据只在本机使用，不上传。</string>
 	<key>NSMotionUsageDescription</key>
-	<string>用于获取设备朝向，使地图可以跟随车头方向旋转。</string>
+	<string>用于获取设备朝向与运动状态，使地图可以跟随车头方向旋转、并识别静止状态减少定位漂移。</string>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
@@ -46,8 +51,6 @@
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
-	<key>UIUserInterfaceStyle</key>
-	<string>Light</string>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
