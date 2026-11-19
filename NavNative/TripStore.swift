@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import CoreLocation
 
 // MARK: - 轨迹点
@@ -208,7 +209,9 @@ final class TripStore: ObservableObject {
     }
 
     func delete(at offsets: IndexSet) {
-        trips.remove(atOffsets: offsets)
+        for index in offsets.sorted(by: >) where trips.indices.contains(index) {
+            trips.remove(at: index)
+        }
         persist()
     }
 
