@@ -23,7 +23,7 @@ struct MapCanvas: UIViewRepresentable {
 
         // 定位到来前的占位视野
         let fallback = CLLocationCoordinate2D(latitude: 31.2304, longitude: 121.4737)
-        let camera = MKMapCamera(lookingAtCenter: fallback, fromDistance: 30000, heading: 0, pitch: 0)
+        let camera = MKMapCamera(lookingAtCenter: fallback, fromDistance: 30000, pitch: 0, heading: 0)
         map.setCamera(camera, animated: false)
 
         let longPress = UILongPressGestureRecognizer(
@@ -202,8 +202,8 @@ struct MapCanvas: UIViewRepresentable {
             let camera = MKMapCamera(
                 lookingAtCenter: coordinate,
                 fromDistance: model.zoomDistance,
-                heading: model.cameraHeading,
-                pitch: model.pitch
+                pitch: model.pitch,
+                heading: model.cameraHeading
             )
             mapView.setCamera(camera, animated: true)
 
