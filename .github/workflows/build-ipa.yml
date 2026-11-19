@@ -1,0 +1,34 @@
+name: build-native-ipa
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'NavNative/**'
+      - '.github/workflows/build-ipa.yml'
+      - 'build_ipa.sh'
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v5
+
+      - name: 显示 Xcode 版本
+        run: xcodebuild -version
+
+      - name: 编译并打包未签名 IPA
+        run: |
+          chmod +x ./build_ipa.sh
+          ./build_ipa.sh
+
+      - name: 上传 IPA 产物
+        uses: actions/upload-artifact@v5
+        with:
+          name: NavNative-unsigned-ipa
+          path: build/NavNative-unsigned.ipa
+          if-no-files-found: error
