@@ -1,85 +1,146 @@
 # 私人导航 Pro · NavNative
 
-纯原生 iOS 导航应用（SwiftUI + MapKit），**不含 WKWebView、不含任何第三方 SDK**，编译出的 IPA 可直接拖进全能签签名安装。
+纯原生 iOS 导航应用（SwiftUI + MapKit），**不含 WKWebView、不含任何第三方 SDK、不需要任何 API Key**，编译出的 IPA 可直接拖进全能签签名安装。
 
-## 为什么换成原生
+当前版本：**v10.0 (100)**
 
-| 项目 | NavApp（WKWebView + 高德 JS） | NavNative（本工程） |
+---
+
+## v1 → v10 迭代路线
+
+| 版本 | 主题 | 关键改动 |
 | --- | --- | --- |
-| 依赖 | 高德 JS API + Key，需联网加载 | 系统 MapKit，零依赖 |
-| 3D 楼块 | Loca PolygonLayer + Overpass | `showsBuildings` 系统 3D 建筑 |
-| 车头向上 | JS 每帧 `setRotation` | `MKMapCamera.heading` 原生 |
-| 路线规划 | 高德 Driving（含实时路况） | `MKDirections`（驾车，无路况色带） |
-| 签名成功率 | 带 web 资源 | 包更小、无嵌入 framework |
+| v1 | 原生骨架 | 用 SwiftUI + MKMapView 替换 WKWebView；MKDirections 规划、相机跟随、长按选点 |
+| v2 | **定位质量管线** | 精度门限、陈旧点丢弃、跳点剔除、**静止冻结**、按精度加权平滑 |
+| v3 | 语音播报 | 中文 TTS 分级播报，播报时压低音乐，静音保留字幕 |
+| v4 | 行程记录 | 里程/均速/极速/海拔升降，本地持久化 + GPX 导出 |
+| v5 | 多途经点 | 最多 8 个，分段规划后拼接成一条路线 |
+| v6 | 周边搜索 | 12 类 POI，一键设终点或加途经点 |
+| v7 | 路线偏好 | 避开高速/收费、驾车/步行、多方案对比 |
+| v8 | 安全与偏航 | 超速提醒、急加速/急刹检测、驾驶评分、偏航 6 秒自动重算 |
+| v9 | 设置与主题 | 日夜主题、公制/英制、全量偏好持久化 |
+| v10 | 整合与打磨 | 大字模式、按车速自适应缩放、收藏夹、版本历史、相机节流 |
 
-两个 App 的 Bundle ID 不同（`com.example.privatenavnative` vs `com.example.privatenav`），可以在手机上共存。
+---
 
-## 功能
+## 定位精度问题是怎么修的（v2 重点）
 
-- **定位**：CoreLocation，导航级精度，速度 / 海拔 / 航向 / 水平精度实时显示
-- **车头向上**：相机 heading 跟随罗盘与 GPS 航迹，角度走最短弧平滑插值
-- **3D 视图**：跟随模式 pitch 55°，可切回俯视
-- **目的地搜索**：`MKLocalSearchCompleter` 输入补全 + `MKLocalSearch` 解析
-- **长按选点**：长按地图任意位置设为终点，自动逆地理编码取名
-- **路线规划**：`MKDirections` 多方案，横向卡片切换，自动缩放到全程
-- **导航**：转向指令 + 到路口剩余距离 + 剩余里程/时间 + 车速，到达自动提示
-- **轨迹**：8 米或 12 秒采一点，蓝色细线绘制，上限 4000 点
+之前「自身位置不准」不是单一原因，是四条问题叠在一起：
+
+| 现象 | 根因 | 修复 |
+| --- | --- | --- |
+| 位置原地乱抖 | `distanceFilter = 1`，1 米就回调，静止时全是噪声 | 过滤阈值提到 3 米，并加入**静止冻结**：判定静止后坐标不再移动 |
+| 车标突然跳到别处 | 只判断 `horizontalAccuracy >= 0`，没有上限 | 精度 > 150m 直接丢弃；> 400m 硬丢弃 |
+| 一打开 App 位置在几公里外 | 使用了系统缓存的旧定位点 | 时间戳超过 8 秒的点全部丢弃 |
+| 位置瞬间"瞬移" | 没有速度合理性校验 | 隐含速度 > 198km/h 且位移 > 60m 判为跳点丢弃 |
+| 精度差时视野乱飞 | 相机每秒跟着噪声点重设 | 相机节流 0.3s + 位移阈值，平滑后坐标才驱动相机 |
+
+另外新增：
+- **精度圈**：地图上画出真实误差范围，一眼能看出「现在是 ±5m 还是 ±80m」
+- **质量分级**：极佳/良好/一般/差，车标外圈与状态卡同步变色
+- **诊断行**：显示已滤除的漂移点数，能直观看到管线在工作
+- **坐标偏移校正开关**：只有发现整体偏移数百米时才需要打开（设备地区为境外时常见）
+
+> iOS 在中国大陆区域下，`CLLocation` 返回的坐标已与 MapKit 底图（高德数据）对齐，**默认不做任何加偏**，否则会人为引入 500 米误差。校正开关默认关闭。
+
+---
+
+## 功能一览
+
+**定位**
+- 导航级精度、速度 / 海拔 / 航向 / 精度实时显示
+- 静止冻结、跳点剔除、精度加权平滑
+- 精度圈 + 质量分级 + 已滤除点数诊断
+
+**导航**
+- 车头向上：罗盘与航迹自动择优（行驶中优先航迹，慢速用罗盘），角度走最短弧插值
+- 导航中按车速自适应缩放（420 / 520 / 750 / 1100 m）
+- 转向卡：当前动作 + 剩余距离 + 「然后…」预览 + 偏航提示
+- 语音：远/中/近三级播报，播报时自动 duck 音乐
+- 偏航 6 秒自动重算，20 秒冷却
+
+**路线**
+- 多方案对比、多途经点（≤8）、避开高速/收费（iOS 16+）
+- 驾车 / 步行切换
+- 交换起终点
+
+**记录**
+- 行程自动记录（导航开始时启动，结束/到达时入库）
+- 里程、均速、极速、海拔升降、驾驶评分
+- GPX 导出（可导入其他轨迹软件）
+
+**其他**
+- 周边 12 类 POI 搜索
+- 收藏夹
+- 日夜主题、公制/英制、导航大字模式、屏幕常亮、后台持续定位
+
+---
 
 ## 目录结构
 
 ```
 NavNative/
 ├── NavNative/
-│   ├── NavNativeApp.swift      # 入口
-│   ├── RootView.swift          # 主界面：地图 + 顶部搜索 + 底部操作
-│   ├── MapCanvas.swift         # MKMapView 包装：相机/路线/标注/手势
-│   ├── NavModel.swift          # 状态机：定位→相机→路线→导航进度
-│   ├── LocationEngine.swift    # CoreLocation 采集（回调式）
-│   ├── RouteEngine.swift       # MKDirections 规划 + 折线进度计算
-│   ├── SearchPanel.swift       # 目的地搜索面板 + 补全
-│   ├── NavHUDView.swift        # 导航指引 / 实时数据卡
-│   ├── Theme.swift             # 配色与格式化
+│   ├── NavNativeApp.swift      # 入口，注入设置与主题
+│   ├── RootView.swift          # 主界面
+│   ├── MapCanvas.swift         # MKMapView 包装：相机/路线/轨迹/精度圈/途经点
+│   ├── NavModel.swift          # 状态机：定位→相机→路线→导航→语音→安全
+│   ├── LocationFuser.swift     # v2 定位融合（精度门限/跳点/静止冻结/平滑）
+│   ├── LocationEngine.swift    # CoreLocation 采集 + 后台 + 坐标校正
+│   ├── RouteEngine.swift       # MKDirections 规划、途经点拼接、折线进度
+│   ├── Guidance.swift          # v3 语音 + v8 安全监控
+│   ├── TripStore.swift         # v4 行程记录 + GPX + 收藏
+│   ├── POISearch.swift         # v6 周边分类搜索
+│   ├── Settings.swift          # v9 偏好持久化
+│   ├── Panels.swift            # 周边/行程/设置/版本历史面板
+│   ├── SearchPanel.swift       # 搜索面板（终点/途经点/起点）
+│   ├── NavHUDView.swift        # 转向卡 / 状态卡 / 速度徽标
+│   ├── Theme.swift             # 明暗自适应配色 + 单位格式化
 │   ├── Info.plist
 │   └── Assets.xcassets
 ├── NavNative.xcodeproj
-├── build_ipa.sh                # 本地出未签名 IPA
+├── build_ipa.sh
 └── .github/workflows/build-ipa.yml
 ```
+
+---
 
 ## 打包
 
 ### 方式一：GitHub Actions（不用 Mac）
-
-推送到 GitHub 后，Actions 自动编译，在运行详情页下载 `NavNative-unsigned-ipa` 压缩包，解压得到 `NavNative-unsigned.ipa`。
-
-若 `github.com` 打不开但 `api.github.com` 可达：
 
 ```powershell
 $env:GITHUB_TOKEN = "ghp_xxx"
 python tools/push_via_api.py --repo navnative --public --watch
 ```
 
-脚本会建仓、上传、触发构建、等完成后把产物下载到 `dist/`。
+脚本会建仓/更新、触发构建、等完成后把产物下载到 `dist/NavNative-unsigned.ipa`。
+
+> 工作流只保留 `workflow_dispatch` 手动触发 + `cancel-in-progress`，避免逐文件提交时排出十几个构建互相堵队列。
 
 ### 方式二：本机 Mac
 
 ```bash
 ./build_ipa.sh
 # 产物：build/NavNative-unsigned.ipa
-# 需要换 Bundle ID：BUNDLE_ID=com.yourname.nav ./build_ipa.sh
+# 换 Bundle ID：BUNDLE_ID=com.yourname.nav ./build_ipa.sh
 ```
+
+---
 
 ## 安装
 
-1. 打开全能签 → 导入 `NavNative-unsigned.ipa`
-2. 选择证书签名 → 安装
+1. 全能签导入 `NavNative-unsigned.ipa`
+2. 选证书签名 → 安装
 3. 首次启动允许「使用 App 期间」定位
-4. 若提示不受信任，去 设置 → 通用 → VPN 与设备管理 里信任描述文件
+4. 提示不受信任：设置 → 通用 → VPN 与设备管理 → 信任描述文件
+
+---
 
 ## 已知限制
 
-- **无实时路况**：`MKDirections` 不返回路况着色，路线时间是不堵车的估算值
-- **无语音播报**：未接 `AVSpeechSynthesizer`，只做视觉指引
-- **限中国大陆可用性**：Apple 地图国内数据由高德提供，道路/POI 覆盖正常；海外地区同样可用但数据源不同
-- **后台不持续定位**：未申请 `location` 后台模式，切到后台导航会暂停，回到前台自动恢复
-- **步进单调**：转向判定只在当前 step 与后两步之间前进，掉头绕路时可能短暂停在旧指令
+- **无实时路况**：`MKDirections` 不返回路况着色，预计时间是不堵车的估算
+- **无电子眼/限速数据**：超速提醒基于你自己设定的限速值，不是道路限速
+- **背景音乐 ducking**：播报会压低其它音频，播完自动恢复；若系统音频被占用可能延迟恢复
+- **海外可用**：Apple 地图海外使用 TomTom 等数据源，POI 覆盖与国内不同
+- **步进单调**：转向判定只前进不后退，掉头绕路时可能短暂停在旧指令
