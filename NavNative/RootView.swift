@@ -4,8 +4,14 @@ import CoreLocation
 
 struct RootView: View {
     @EnvironmentObject private var model: NavModel
+    @ObservedObject private var settings = SettingsStore.shared
+
     @State private var showSearch = false
+    @State private var searchTarget: SearchTarget = .destination
     @State private var showStatus = true
+    @State private var showPOI = false
+    @State private var showTrips = false
+    @State private var showSettings = false
 
     var body: some View {
         ZStack {
@@ -16,7 +22,7 @@ struct RootView: View {
                 centerMarker
             }
 
-            VStack(spacing: 12) {
+            VStack(spacing: 10) {
                 if model.navigating {
                     NavTopBar()
                 } else {
@@ -26,44 +32,65 @@ struct RootView: View {
                 Spacer(minLength: 0)
 
                 if model.navigating {
-                    NavBottomBar()
+                    HStack(alignment: .bottom, spacing: 10) {
+                        SpeedBadge()
+                        NavBottomBar()
+                    }
                 } else {
                     bottomArea
                 }
             }
             .padding(.horizontal, 14)
             .padding(.top, 6)
-            .padding(.bottom, 10)
+            .padding(.bottom, 8)
 
             if model.arrived {
                 VStack {
                     Spacer()
-                    Text("已到达目的地附近")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 18)
-                        .padding(.vertical, 12)
-                        .background(
-                            Capsule().fill(Theme.success)
-                        )
-                        .shadow(color: Theme.success.opacity(0.4), radius: 14, x: 0, y: 6)
-                        .padding(.bottom, 120)
+                    VStack(spacing: 8) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 30))
+                            .foregroundColor(.white)
+                        Text("已到达 \(model.arrivedName)")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(.horizontal, 22)
+                    .padding(.vertical, 16)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Theme.success)
+                    )
+                    .shadow(color: Theme.success.opacity(0.45), radius: 16, x: 0, y: 8)
+                    .padding(.bottom, 150)
                 }
                 .allowsHitTesting(false)
+                .transition(.opacity)
             }
         }
-        .background(Color(red: 0.95, green: 0.96, blue: 0.98))
+        .background(Theme.canvas)
         .sheet(isPresented: $showSearch) {
-            SearchPanel()
+            SearchPanel(initialTarget: searchTarget)
                 .environmentObject(model)
         }
-        .alert("定位提示", isPresented: Binding(
+        .sheet(isPresented: $showPOI) {
+            POISheet()
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $showTrips) {
+            TripsSheet()
+                .environmentObject(model)
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsSheet()
+                .environmentObject(model)
+        }
+        .alert("提示", isPresented: Binding(
             get: { model.errorMessage != nil },
             set: { if !$0 { model.errorMessage = nil } }
         )) {
-            Button("知道了", role: .cancel) {
-                model.errorMessage = nil
-            }
+            Button("知道了", role: .cancel) { model.errorMessage = nil }
         } message: {
             Text(model.errorMessage ?? "")
         }
@@ -72,10 +99,18 @@ struct RootView: View {
         }
     }
 
-    // MARK: - 车标（跟随模式下固定屏幕中心，地图已按航向旋转）
+    // MARK: - 车标
 
     private var centerMarker: some View {
         ZStack {
+            // 精度差时外圈变黄，给出「位置可能不准」的视觉反馈
+            Circle()
+                .stroke(
+                    Theme.qualityColor(model.quality).opacity(0.55),
+                    lineWidth: model.quality.rawValue >= FixQuality.good.rawValue ? 0 : 3
+                )
+                .frame(width: 62, height: 62)
+
             Circle()
                 .fill(Theme.primary)
                 .frame(width: 46, height: 46)
@@ -93,15 +128,17 @@ struct RootView: View {
     // MARK: - 顶部
 
     private var topBar: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 10) {
+        VStack(spacing: 8) {
+            HStack(spacing: 8) {
                 searchField
-                circleButton(
-                    icon: model.following ? "location.fill" : "location",
-                    tint: model.following ? Theme.primary : Theme.ink
-                ) {
-                    model.centerOnUser()
+
+                circleButton(icon: "arrow.up.arrow.down", tint: Theme.subInk, size: 44) {
+                    model.swapEndpoints()
                 }
+            }
+
+            if !model.waypoints.isEmpty {
+                waypointChips
             }
 
             if !model.options.isEmpty {
@@ -112,7 +149,10 @@ struct RootView: View {
 
     private var searchField: some View {
         HStack(spacing: 10) {
-            Button(action: { showSearch = true }) {
+            Button(action: {
+                searchTarget = .destination
+                showSearch = true
+            }) {
                 HStack(spacing: 10) {
                     Image(systemName: "magnifyingglass")
                         .font(.system(size: 15, weight: .semibold))
@@ -124,7 +164,7 @@ struct RootView: View {
                                 .font(.system(size: 15, weight: .medium))
                                 .foregroundColor(Theme.subInk)
                         } else {
-                            Text(model.endName)
+                            Text(model.destinationLabel)
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundColor(Theme.ink)
                                 .lineLimit(1)
@@ -153,126 +193,200 @@ struct RootView: View {
         .glassCard(padding: 12)
     }
 
+    private var waypointChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(Array(model.waypoints.enumerated()), id: \.element.id) { pair in
+                    HStack(spacing: 5) {
+                        Text("经\(pair.offset + 1)")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 20, height: 20)
+                            .background(Circle().fill(Theme.warning))
+                        Text(pair.element.name)
+                            .font(.system(size: 11))
+                            .foregroundColor(Theme.ink)
+                            .lineLimit(1)
+                        Button(action: { model.removeWaypoint(pair.element.id) }) {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(Theme.faint)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule().fill(Theme.cardFill.opacity(0.94))
+                    )
+                }
+
+                Button(action: {
+                    searchTarget = .waypoint
+                    showSearch = true
+                }) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 9, weight: .bold))
+                        Text("途经点")
+                            .font(.system(size: 11))
+                    }
+                    .foregroundColor(Theme.primary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(Theme.cardFill.opacity(0.94)))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 1)
+        }
+    }
+
     private var routeSelector: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 ForEach(model.options) { option in
                     Button(action: { model.select(route: option.id) }) {
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 3) {
                             Text(option.title)
-                                .font(.system(size: 12, weight: .semibold))
+                                .font(.system(size: 11, weight: .semibold))
                                 .foregroundColor(option.id == model.selectedIndex ? .white : Theme.ink)
                             Text("\(Fmt.distance(option.distance)) · \(Fmt.duration(option.expectedTravelTime))")
-                                .font(.system(size: 11))
+                                .font(.system(size: 10))
                                 .foregroundColor(option.id == model.selectedIndex ? .white.opacity(0.9) : Theme.subInk)
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 9)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(option.id == model.selectedIndex ? Theme.primary : Color.white.opacity(0.92))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(Color.white.opacity(0.7), lineWidth: 1)
-                        )
-                        .shadow(color: Color.black.opacity(0.10), radius: 8, x: 0, y: 4)
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 8)
+                        .chipBackground(active: option.id == model.selectedIndex)
+                        .shadow(color: Color.black.opacity(0.10), radius: 6, x: 0, y: 3)
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, 2)
-            .padding(.vertical, 2)
+            .padding(.vertical, 1)
         }
     }
 
     // MARK: - 底部
 
     private var bottomArea: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             if model.planning {
                 HStack(spacing: 10) {
                     ProgressView()
                     Text("正在计算路线…")
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(Theme.subInk)
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.vertical, 9)
                 .glassCard(padding: 0)
             } else if let error = model.routeError {
                 Text(error)
-                    .font(.system(size: 12))
+                    .font(.system(size: 11))
                     .foregroundColor(Theme.danger)
                     .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 7)
                     .glassCard(padding: 0)
+            }
+
+            if model.tripActive && !model.navigating {
+                tripPill
             }
 
             if showStatus {
                 StatusCard()
             }
 
-            HStack(spacing: 10) {
-                circleButton(icon: "info.circle", tint: showStatus ? Theme.primary : Theme.ink) {
-                    showStatus.toggle()
+            HStack(spacing: 8) {
+                circleButton(icon: "info.circle", tint: showStatus ? Theme.primary : Theme.subInk, size: 46) {
+                    withAnimation(.easeInOut(duration: 0.18)) { showStatus.toggle() }
                 }
-                circleButton(icon: "arrow.triangle.2.circlepath", tint: Theme.ink) {
-                    model.resetView()
+                circleButton(icon: "location.fill", tint: Theme.ink, size: 46) {
+                    model.centerOnUser()
                 }
+                circleButton(icon: "mappin.and.ellipse", tint: Theme.ink, size: 46) {
+                    showPOI = true
+                }
+                circleButton(icon: "clock.arrow.circlepath", tint: Theme.ink, size: 46) {
+                    showTrips = true
+                }
+                circleButton(icon: "gearshape.fill", tint: Theme.ink, size: 46) {
+                    showSettings = true
+                }
+            }
 
-                if model.selectedOption != nil {
-                    Button(action: { model.startNavigation() }) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "location.north.line.fill")
-                                .font(.system(size: 17, weight: .bold))
-                            Text("开始导航")
-                                .font(.system(size: 16, weight: .bold))
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Theme.primary)
-                        )
-                        .shadow(color: Theme.primary.opacity(0.35), radius: 14, x: 0, y: 6)
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    Button(action: { showSearch = true }) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "magnifyingglass")
-                                .font(.system(size: 16, weight: .bold))
-                            Text("选择目的地")
-                                .font(.system(size: 16, weight: .bold))
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(Theme.primary)
-                        )
-                        .shadow(color: Theme.primary.opacity(0.35), radius: 14, x: 0, y: 6)
-                    }
-                    .buttonStyle(.plain)
+            if model.selectedOption != nil {
+                primaryButton(title: "开始导航", icon: "location.north.line.fill") {
+                    model.startNavigation()
+                }
+            } else {
+                primaryButton(title: "选择目的地", icon: "magnifyingglass") {
+                    searchTarget = .destination
+                    showSearch = true
                 }
             }
         }
     }
 
-    private func circleButton(icon: String, tint: Color, action: @escaping () -> Void) -> some View {
+    private var tripPill: some View {
+        Button(action: { model.toggleTrip() }) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(Theme.danger)
+                    .frame(width: 7, height: 7)
+                Text("记录中")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(Theme.ink)
+                Text(Fmt.distance(model.tripDistance))
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundColor(Theme.subInk)
+                Text(Fmt.duration(model.tripElapsed))
+                    .font(.system(size: 11, design: .rounded))
+                    .foregroundColor(Theme.subInk)
+                Spacer(minLength: 0)
+                Text("结束")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(Theme.danger)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .glassCard(padding: 0)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func primaryButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .bold))
+                Text(title)
+                    .font(.system(size: 16, weight: .bold))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 15)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Theme.primary)
+            )
+            .shadow(color: Theme.primary.opacity(0.35), radius: 14, x: 0, y: 6)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func circleButton(icon: String, tint: Color, size: CGFloat = 48, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: size > 46 ? 17 : 16, weight: .semibold))
                 .foregroundColor(tint)
-                .frame(width: 48, height: 48)
+                .frame(width: size, height: size)
                 .background(
-                    Circle().fill(Color.white.opacity(0.94))
+                    Circle().fill(Theme.cardFill.opacity(0.95))
                 )
                 .overlay(
-                    Circle().strokeBorder(Color.white.opacity(0.8), lineWidth: 1)
+                    Circle().strokeBorder(Theme.cardStroke.opacity(0.5), lineWidth: 1)
                 )
                 .shadow(color: Color.black.opacity(0.14), radius: 10, x: 0, y: 4)
         }
